@@ -1,10 +1,13 @@
 package com.app.orgs
 
+import android.content.Intent
 import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle
 import android.view.Menu
 import android.view.MenuItem
 import android.widget.Toast
+import com.app.orgs.database.AppDatabase
+import com.app.orgs.database.dao.ProductDao
 import com.app.orgs.databinding.ActivityProductDetailBinding
 import com.app.orgs.extensions.formatCurrency
 import com.app.orgs.extensions.tryLoadImage
@@ -13,6 +16,7 @@ import com.app.orgs.model.Product
 class ProductDetailActivity : AppCompatActivity() {
 
     private lateinit var binding: ActivityProductDetailBinding
+    private lateinit var product: Product
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -23,6 +27,7 @@ class ProductDetailActivity : AppCompatActivity() {
 
     private fun tryLoadProduct() {
         intent.getParcelableExtra<Product>(PRODUCT_KEY)?.let { loadedProduct ->
+            product = loadedProduct
             fillFields(loadedProduct)
         } ?: finish()
     }
@@ -42,18 +47,26 @@ class ProductDetailActivity : AppCompatActivity() {
     }
 
     override fun onOptionsItemSelected(item: MenuItem): Boolean {
-        when (item.itemId) {
-            R.id.im_edit -> editProduct()
-            R.id.im_delete -> deleteProduct()
+        if (::product.isInitialized) {
+            when (item.itemId) {
+                R.id.im_edit -> editProduct()
+                R.id.im_delete -> deleteProduct()
+            }
         }
         return super.onOptionsItemSelected(item)
     }
 
     private fun deleteProduct() {
-        Toast.makeText(this, "DELETANDOOO", Toast.LENGTH_LONG).show()
+        val db = AppDatabase.getInstance(this)
+        val productDao = db.productDao()
+        productDao.delete(product)
+        finish()
     }
 
     private fun editProduct() {
-        Toast.makeText(this, "EDITANDOOOO", Toast.LENGTH_LONG).show()
+        Intent(this, FormProductActivity::class.java).apply {
+            putExtra(PRODUCT_KEY, product)
+            startActivity(this)
+        }
     }
 }
