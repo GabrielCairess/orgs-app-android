@@ -5,9 +5,7 @@ import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle
 import android.view.Menu
 import android.view.MenuItem
-import android.widget.Toast
 import com.app.orgs.database.AppDatabase
-import com.app.orgs.database.dao.ProductDao
 import com.app.orgs.databinding.ActivityProductDetailBinding
 import com.app.orgs.extensions.formatCurrency
 import com.app.orgs.extensions.tryLoadImage
@@ -15,8 +13,12 @@ import com.app.orgs.model.Product
 
 class ProductDetailActivity : AppCompatActivity() {
 
+    private var productId: Long = 0L
     private lateinit var binding: ActivityProductDetailBinding
-    private lateinit var product: Product
+    private var product: Product? = null
+    private val productDao by lazy {
+        AppDatabase.getInstance(this).productDao()
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -25,11 +27,16 @@ class ProductDetailActivity : AppCompatActivity() {
         tryLoadProduct()
     }
 
-    private fun tryLoadProduct() {
-        intent.getParcelableExtra<Product>(PRODUCT_KEY)?.let { loadedProduct ->
-            product = loadedProduct
-            fillFields(loadedProduct)
+    override fun onResume() {
+        super.onResume()
+        product = productDao.getById(productId)
+        product?.let {
+            fillFields(it)
         } ?: finish()
+    }
+
+    private fun tryLoadProduct() {
+        productId = intent.getLongExtra(PRODUCT_KEY_ID, 0L)
     }
 
     private fun fillFields(product: Product) {
@@ -47,25 +54,23 @@ class ProductDetailActivity : AppCompatActivity() {
     }
 
     override fun onOptionsItemSelected(item: MenuItem): Boolean {
-        if (::product.isInitialized) {
-            when (item.itemId) {
-                R.id.im_edit -> editProduct()
-                R.id.im_delete -> deleteProduct()
-            }
+        when (item.itemId) {
+            R.id.im_edit -> editProduct()
+            R.id.im_delete -> deleteProduct()
         }
         return super.onOptionsItemSelected(item)
     }
 
     private fun deleteProduct() {
-        val db = AppDatabase.getInstance(this)
-        val productDao = db.productDao()
-        productDao.delete(product)
+        product?.let {
+            productDao.delete(it)
+        }
         finish()
     }
 
     private fun editProduct() {
         Intent(this, FormProductActivity::class.java).apply {
-            putExtra(PRODUCT_KEY, product)
+            putExtra(PRODUCT_KEY_ID, productId)
             startActivity(this)
         }
     }

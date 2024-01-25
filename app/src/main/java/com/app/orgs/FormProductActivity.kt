@@ -16,7 +16,9 @@ import java.math.BigDecimal
 class FormProductActivity : AppCompatActivity(), View.OnClickListener {
 
     private lateinit var binding: ActivityFormProductBinding
-    private lateinit var productDao: ProductDao
+    private val productDao by lazy {
+        AppDatabase.getInstance(this).productDao()
+    }
     private var url: String? = null
     private var productId = 0L
 
@@ -28,24 +30,29 @@ class FormProductActivity : AppCompatActivity(), View.OnClickListener {
 
         tryLoadProduct()
 
-        val db = AppDatabase.getInstance(this)
-        productDao = db.productDao()
-
         setContentView(binding.root)
     }
 
     private fun tryLoadProduct() {
-        intent.getParcelableExtra<Product>(PRODUCT_KEY)?.let {
-            title = "Alterar Produto"
-            productId = it.id
-            url = it.image
-            binding.imgProduct.tryLoadImage(it.image)
-            binding.edtName.setText(it.name)
-            binding.edtDescription.setText(it.description)
-            binding.edtValue.setText(it.value.toPlainString())
+        productId = intent.getLongExtra(PRODUCT_KEY_ID, 0L)
+    }
 
-            binding.btnSave.text = "Atualizar"
+    override fun onResume() {
+        super.onResume()
+        productDao.getById(productId)?.let {
+            fillFields(it)
         }
+    }
+
+    private fun fillFields(product: Product) {
+        title = "Alterar Produto"
+        url = product.image
+        binding.imgProduct.tryLoadImage(product.image)
+        binding.edtName.setText(product.name)
+        binding.edtDescription.setText(product.description)
+        binding.edtValue.setText(product.value.toPlainString())
+
+        binding.btnSave.text = "Atualizar"
     }
 
     override fun onClick(v: View) {
@@ -64,11 +71,7 @@ class FormProductActivity : AppCompatActivity(), View.OnClickListener {
         val value = binding.edtValue.text.toString()
 
         if (!name.isNullOrEmpty() && !description.isNullOrEmpty() && !value.isNullOrEmpty()) {
-            if (productId > 0) {
-                productDao.update(Product(id = productId, name = name, description = description, value = BigDecimal(value), image = url))
-            } else {
-                productDao.save(Product(name = name, description = description, value = BigDecimal(value), image = url))
-            }
+            productDao.save(Product(id = productId, name = name, description = description, value = BigDecimal(value), image = url))
             startActivity(Intent(this, MainActivity::class.java))
             finish()
         } else {
