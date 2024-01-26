@@ -10,6 +10,10 @@ import com.app.orgs.database.AppDatabase
 import com.app.orgs.databinding.ActivityMainBinding
 import com.app.orgs.model.Product
 import com.app.orgs.ui.recyclerview.adapter.ProductListAdapter
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 class MainActivity : AppCompatActivity(), View.OnClickListener {
 
@@ -35,21 +39,24 @@ class MainActivity : AppCompatActivity(), View.OnClickListener {
     }
 
     override fun onOptionsItemSelected(item: MenuItem): Boolean {
-        val orderedProducts: List<Product>? = when (item.itemId) {
-            R.id.order_by_name_desc_menu -> productDao.getAllOrderByNameDesc()
-            R.id.order_by_name_asc_menu -> productDao.getAllOrderByNameAsc()
-            R.id.order_by_description_desc_menu -> productDao.getAllOrderByDescriptionDesc()
-            R.id.order_by_description_asc_menu -> productDao.getAllOrderByDescriptionAsc()
-            R.id.order_by_value_desc_menu -> productDao.getAllOrderByValueDesc()
-            R.id.order_by_value_asc_menu -> productDao.getAllOrderByValueAsc()
-            R.id.without_order_menu -> productDao.getAll()
-            else -> null
-        }
+        CoroutineScope(Dispatchers.IO).launch {
+            val orderedProducts: List<Product>? = when (item.itemId) {
+                R.id.order_by_name_desc_menu -> productDao.getAllOrderByNameDesc()
+                R.id.order_by_name_asc_menu -> productDao.getAllOrderByNameAsc()
+                R.id.order_by_description_desc_menu -> productDao.getAllOrderByDescriptionDesc()
+                R.id.order_by_description_asc_menu -> productDao.getAllOrderByDescriptionAsc()
+                R.id.order_by_value_desc_menu -> productDao.getAllOrderByValueDesc()
+                R.id.order_by_value_asc_menu -> productDao.getAllOrderByValueAsc()
+                R.id.without_order_menu -> productDao.getAll()
+                else -> null
+            }
 
-        orderedProducts?.let {
-            adapter.updateProductsList(it)
+            orderedProducts?.let {
+                withContext(Dispatchers.Main) {
+                    adapter.updateProductsList(it)
+                }
+            }
         }
-
         return super.onOptionsItemSelected(item)
     }
 
@@ -67,7 +74,13 @@ class MainActivity : AppCompatActivity(), View.OnClickListener {
 
     override fun onResume() {
         super.onResume()
-        adapter.updateProductsList(productDao.getAll())
+
+        CoroutineScope(Dispatchers.IO).launch {
+            val products = productDao.getAll()
+            withContext(Dispatchers.Main) {
+                adapter.updateProductsList(products)
+            }
+        }
     }
 
     override fun onClick(v: View) {

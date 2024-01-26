@@ -10,6 +10,10 @@ import com.app.orgs.databinding.ActivityProductDetailBinding
 import com.app.orgs.extensions.formatCurrency
 import com.app.orgs.extensions.tryLoadImage
 import com.app.orgs.model.Product
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 class ProductDetailActivity : AppCompatActivity() {
 
@@ -29,10 +33,15 @@ class ProductDetailActivity : AppCompatActivity() {
 
     override fun onResume() {
         super.onResume()
-        product = productDao.getById(productId)
-        product?.let {
-            fillFields(it)
-        } ?: finish()
+
+        CoroutineScope(Dispatchers.IO).launch {
+            product = productDao.getById(productId)
+            product?.let {
+                withContext(Dispatchers.Main) {
+                    fillFields(it)
+                }
+            } ?: finish()
+        }
     }
 
     private fun tryLoadProduct() {
@@ -62,8 +71,11 @@ class ProductDetailActivity : AppCompatActivity() {
     }
 
     private fun deleteProduct() {
-        product?.let {
-            productDao.delete(it)
+
+        CoroutineScope(Dispatchers.IO).launch {
+            product?.let {
+                productDao.delete(it)
+            }
         }
         finish()
     }

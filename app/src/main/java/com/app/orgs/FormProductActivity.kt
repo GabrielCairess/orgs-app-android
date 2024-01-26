@@ -11,6 +11,10 @@ import com.app.orgs.databinding.ActivityFormProductBinding
 import com.app.orgs.dialog.FormImageDialog
 import com.app.orgs.extensions.tryLoadImage
 import com.app.orgs.model.Product
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import java.math.BigDecimal
 
 class FormProductActivity : AppCompatActivity(), View.OnClickListener {
@@ -39,8 +43,13 @@ class FormProductActivity : AppCompatActivity(), View.OnClickListener {
 
     override fun onResume() {
         super.onResume()
-        productDao.getById(productId)?.let {
-            fillFields(it)
+
+        CoroutineScope(Dispatchers.IO).launch {
+            productDao.getById(productId)?.let {
+                withContext(Dispatchers.Main) {
+                    fillFields(it)
+                }
+            }
         }
     }
 
@@ -71,7 +80,9 @@ class FormProductActivity : AppCompatActivity(), View.OnClickListener {
         val value = binding.edtValue.text.toString()
 
         if (!name.isNullOrEmpty() && !description.isNullOrEmpty() && !value.isNullOrEmpty()) {
-            productDao.save(Product(id = productId, name = name, description = description, value = BigDecimal(value), image = url))
+            CoroutineScope(Dispatchers.IO).launch {
+                productDao.save(Product(id = productId, name = name, description = description, value = BigDecimal(value), image = url))
+            }
             startActivity(Intent(this, MainActivity::class.java))
             finish()
         } else {
