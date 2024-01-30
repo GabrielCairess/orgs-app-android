@@ -5,15 +5,13 @@ import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle
 import android.view.Menu
 import android.view.MenuItem
+import androidx.lifecycle.lifecycleScope
 import com.app.orgs.database.AppDatabase
 import com.app.orgs.databinding.ActivityProductDetailBinding
 import com.app.orgs.extensions.formatCurrency
 import com.app.orgs.extensions.tryLoadImage
 import com.app.orgs.model.Product
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
 
 class ProductDetailActivity : AppCompatActivity() {
 
@@ -34,12 +32,10 @@ class ProductDetailActivity : AppCompatActivity() {
     override fun onResume() {
         super.onResume()
 
-        CoroutineScope(Dispatchers.IO).launch {
+        lifecycleScope.launch {
             product = productDao.getById(productId)
             product?.let {
-                withContext(Dispatchers.Main) {
-                    fillFields(it)
-                }
+                fillFields(it)
             } ?: finish()
         }
     }
@@ -72,7 +68,7 @@ class ProductDetailActivity : AppCompatActivity() {
 
     private fun deleteProduct() {
 
-        CoroutineScope(Dispatchers.IO).launch {
+        lifecycleScope.launch {
             product?.let {
                 productDao.delete(it)
             }

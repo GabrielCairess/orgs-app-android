@@ -6,14 +6,12 @@ import android.view.Menu
 import android.view.MenuItem
 import android.view.View
 import androidx.appcompat.app.AppCompatActivity
+import androidx.lifecycle.lifecycleScope
 import com.app.orgs.database.AppDatabase
 import com.app.orgs.databinding.ActivityMainBinding
 import com.app.orgs.model.Product
 import com.app.orgs.ui.recyclerview.adapter.ProductListAdapter
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
 
 class MainActivity : AppCompatActivity(), View.OnClickListener {
 
@@ -39,7 +37,7 @@ class MainActivity : AppCompatActivity(), View.OnClickListener {
     }
 
     override fun onOptionsItemSelected(item: MenuItem): Boolean {
-        CoroutineScope(Dispatchers.IO).launch {
+        lifecycleScope.launch {
             val orderedProducts: List<Product>? = when (item.itemId) {
                 R.id.order_by_name_desc_menu -> productDao.getAllOrderByNameDesc()
                 R.id.order_by_name_asc_menu -> productDao.getAllOrderByNameAsc()
@@ -52,9 +50,7 @@ class MainActivity : AppCompatActivity(), View.OnClickListener {
             }
 
             orderedProducts?.let {
-                withContext(Dispatchers.Main) {
-                    adapter.updateProductsList(it)
-                }
+                adapter.updateProductsList(it)
             }
         }
         return super.onOptionsItemSelected(item)
@@ -75,11 +71,9 @@ class MainActivity : AppCompatActivity(), View.OnClickListener {
     override fun onResume() {
         super.onResume()
 
-        CoroutineScope(Dispatchers.IO).launch {
+        lifecycleScope.launch {
             val products = productDao.getAll()
-            withContext(Dispatchers.Main) {
-                adapter.updateProductsList(products)
-            }
+            adapter.updateProductsList(products)
         }
     }
 
