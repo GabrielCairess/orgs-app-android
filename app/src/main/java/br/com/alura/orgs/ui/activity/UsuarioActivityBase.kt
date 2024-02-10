@@ -2,7 +2,6 @@ package br.com.alura.orgs.ui.activity
 
 import android.content.Intent
 import android.os.Bundle
-import android.os.PersistableBundle
 import androidx.appcompat.app.AppCompatActivity
 import androidx.datastore.preferences.core.edit
 import androidx.lifecycle.lifecycleScope
@@ -19,8 +18,8 @@ import kotlinx.coroutines.launch
 
 abstract class UsuarioActivityBase : AppCompatActivity() {
 
-    private var _usuario: MutableStateFlow<Usuario?> = MutableStateFlow(null)
-    protected var usuario: StateFlow<Usuario?> = _usuario
+    private val _usuario: MutableStateFlow<Usuario?> = MutableStateFlow(null)
+    protected val usuario: StateFlow<Usuario?> = _usuario
     protected val usuarioDao by lazy {
         AppDatabase.instancia(this).usuarioDao()
     }
@@ -40,8 +39,10 @@ abstract class UsuarioActivityBase : AppCompatActivity() {
         }
     }
 
-    protected suspend fun buscaUsuario(usuarioId: String) {
-        _usuario.value = usuarioDao.buscaPorId(usuarioId).firstOrNull()
+    protected suspend fun buscaUsuario(usuarioId: String): Usuario? {
+        return usuarioDao.buscaPorId(usuarioId).firstOrNull().also {
+            _usuario.value = it
+        }
     }
 
     protected suspend fun sairDoApp() {
@@ -56,4 +57,6 @@ abstract class UsuarioActivityBase : AppCompatActivity() {
         }
         finish()
     }
+
+    protected fun usuarios() = usuarioDao.buscaTodos()
 }

@@ -1,5 +1,3 @@
-package br.com.alura.orgs.ui.recyclerview.adapter
-
 import android.content.Context
 import android.view.LayoutInflater
 import android.view.View
@@ -53,7 +51,6 @@ class ListaProdutosAdapter(
             binding.imageView.tentaCarregarImagem(produto.imagem)
         }
 
-
     }
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): ViewHolder {
@@ -74,5 +71,6 @@ class ListaProdutosAdapter(
         this.produtos.addAll(produtos)
         notifyDataSetChanged()
     }
+
 
 }

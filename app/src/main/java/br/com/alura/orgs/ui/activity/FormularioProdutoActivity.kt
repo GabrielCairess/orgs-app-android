@@ -1,19 +1,26 @@
 package br.com.alura.orgs.ui.activity
 
 import android.os.Bundle
-import androidx.appcompat.app.AppCompatActivity
+import android.util.Log
+import android.view.View.GONE
+import android.view.View.VISIBLE
+import android.widget.ArrayAdapter
 import androidx.lifecycle.lifecycleScope
+import br.com.alura.orgs.R
 import br.com.alura.orgs.database.AppDatabase
 import br.com.alura.orgs.database.dao.ProdutoDao
 import br.com.alura.orgs.databinding.ActivityFormularioProdutoBinding
 import br.com.alura.orgs.extensions.tentaCarregarImagem
 import br.com.alura.orgs.model.Produto
+import br.com.alura.orgs.model.Usuario
 import br.com.alura.orgs.ui.dialog.FormularioImagemDialog
 import kotlinx.coroutines.flow.collect
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 import java.math.BigDecimal
 
-class FormularioProdutoActivity : AppCompatActivity() {
+class FormularioProdutoActivity : UsuarioActivityBase() {
 
     private val binding by lazy {
         ActivityFormularioProdutoBinding.inflate(layoutInflater)
@@ -21,8 +28,7 @@ class FormularioProdutoActivity : AppCompatActivity() {
     private var url: String? = null
     private var produtoId = 0L
     private val produtoDao: ProdutoDao by lazy {
-        val db = AppDatabase.instancia(this)
-        db.produtoDao()
+        AppDatabase.instancia(this).produtoDao()
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -54,10 +60,58 @@ class FormularioProdutoActivity : AppCompatActivity() {
             produtoDao.buscaPorId(produtoId).collect {
                 it?.let { produtoEncontrado ->
                     title = "Alterar produto"
+                    val campoUsuarioId = binding.activityFormularioProdutoUsuarioId
+                    campoUsuarioId.visibility = verificaSeProdutoTemUsuario(produtoEncontrado)
                     preencheCampos(produtoEncontrado)
                 }
             }
         }
+    }
+
+    private fun verificaSeProdutoTemUsuario(produtoEncontrado: Produto) =
+        if (produtoEncontrado.salvoSemUsuario()) {
+            configuraCampoUsuario()
+            VISIBLE
+        } else
+            GONE
+
+    private fun configuraCampoUsuario() {
+        lifecycleScope.launch {
+            usuarios().map { usuarios -> usuarios.map { it.id } }
+                .collect { usuarios ->
+                    configuraAutoCompleteTextView(usuarios)
+                }
+        }
+    }
+
+    private fun configuraAutoCompleteTextView(
+        usuarios: List<String>
+    ) {
+        val campoUsuarioId =
+            binding.activityFormularioProdutoUsuarioId
+        val adapter = ArrayAdapter(
+            this@FormularioProdutoActivity,
+            R.layout.support_simple_spinner_dropdown_item,
+            usuarios
+        )
+        campoUsuarioId.setAdapter(adapter)
+        campoUsuarioId.setOnFocusChangeListener { _, focado ->
+            if (!focado) {
+                usuarioExistenteValido(usuarios)
+            }
+        }
+    }
+
+    private fun usuarioExistenteValido(
+        usuarios: List<String>
+    ): Boolean {
+        val campoUsuarioId = binding.activityFormularioProdutoUsuarioId
+        val usuarioId = campoUsuarioId.text.toString()
+        if (!usuarios.contains(usuarioId)) {
+            campoUsuarioId.error = "usuário inexistente!"
+            return false
+        }
+        return true
     }
 
     private fun preencheCampos(produto: Produto) {
@@ -76,15 +130,45 @@ class FormularioProdutoActivity : AppCompatActivity() {
         val botaoSalvar = binding.activityFormularioProdutoBotaoSalvar
 
         botaoSalvar.setOnClickListener {
-            val produtoNovo = criaProduto()
             lifecycleScope.launch {
-                produtoDao.salva(produtoNovo)
-                finish()
+                tentaSalvarProduto()
             }
         }
     }
 
-    private fun criaProduto(): Produto {
+    private suspend fun tentaSalvarProduto() {
+        usuario.value?.let { usuario ->
+            try {
+                val usuarioId = defineUsuarioId(usuario)
+                val produto = criaProduto(usuarioId)
+                produtoDao.salva(produto)
+                finish()
+            } catch (e: RuntimeException) {
+                Log.e("FormularioProduto", "configuraBotaoSalvar: ", e)
+            }
+        }
+    }
+
+    private suspend fun defineUsuarioId(usuario: Usuario): String = produtoDao
+        .buscaPorId(produtoId)
+        .first()?.let { produtoEncontrado ->
+            if (produtoEncontrado.usuarioId.isNullOrBlank()) {
+                val usuarios = usuarios()
+                    .map { usuariosEncontrados ->
+                        usuariosEncontrados.map { it.id }
+                    }.first()
+                if (usuarioExistenteValido(usuarios)) {
+                    val campoUsuarioId =
+                        binding.activityFormularioProdutoUsuarioId
+                    return campoUsuarioId.text.toString()
+                } else {
+                    throw RuntimeException("Tentou salvar produto com usuário inexistente")
+                }
+            }
+            null
+        } ?: usuario.id
+
+    private fun criaProduto(usuarioId: String): Produto {
         val campoNome = binding.activityFormularioProdutoNome
         val nome = campoNome.text.toString()
         val campoDescricao = binding.activityFormularioProdutoDescricao
@@ -102,7 +186,8 @@ class FormularioProdutoActivity : AppCompatActivity() {
             nome = nome,
             descricao = descricao,
             valor = valor,
-            imagem = url
+            imagem = url,
+            usuarioId = usuarioId
         )
     }
 
